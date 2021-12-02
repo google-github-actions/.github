@@ -1,23 +1,7 @@
-name: 'Pull Request'
-description: 'Propose a pull request'
-body:
-- type: 'markdown'
-  attributes:
-    value: |-
-      Thank you for proposing a pull request! Please note that **some tests will
-      likely fail** due to how GitHub exposes secrets in Pull Requests from
-      forks. Someone from the team will review your Pull Request and respond.
+<!--
+Thank you for proposing a pull request! Please note that **some tests will
+likely fail** due to how GitHub exposes secrets in Pull Requests from forks.
+Someone from the team will review your Pull Request and respond.
 
-- id: 'summary'
-  type: 'textarea'
-  attributes:
-    label: 'Change summary'
-    description: 'Describe the pull request in 1-2 sentences.'
-  validations:
-    required: true
-
-- id: 'design'
-  type: 'textarea'
-  attributes:
-    label: 'Design notes and considerations'
-    description: 'Are there other things reviewers should know?'
+Please describe your change and any implementation details below.
+-->
