@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       version_strategy:
-        description: 'Version strategy'
+        description: 'Version strategy: The strategy to used to update the version based on semantic versioning (more info at https://semver.org/).'
         required: true
         type: 'string'
 
@@ -18,13 +18,14 @@ jobs:
     steps:
       - uses: 'actions/checkout@v3'
 
-      - uses: 'actions/setup-node@v2'
+      - uses: 'actions/setup-node@v3'
         with:
           node-version: '16.x'
 
       - name: 'Build and push'
         id: 'build'
         run: |-
+          # configure username and email for git to show who made the changes
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
@@ -43,7 +44,7 @@ jobs:
 
       - name: 'Generate release notes'
         id: 'release_notes'
-        uses: 'actions/github-script@v5'
+        uses: 'actions/github-script@v6'
         with:
           result-encoding: 'string'
           script: |-
@@ -58,8 +59,7 @@ jobs:
               previousTagName = latestRelease.data.tag_name;
             } catch(err) {
               if(err['status'] !== 404) {
-                core.error(`Failed to load latest release: ${err}`);
-                process.exit(1);
+                core.setFailed(`Failed to load latest release: ${err}`);
               }
 
               core.info(`No existing releases found`);
@@ -81,12 +81,11 @@ jobs:
 
               return releaseNotes.data.body;
             } catch(err) {
-              core.error(`Failed to generate release notes: ${err}`);
-              process.exit(1);
+              core.setFailed(`Failed to generate release notes: ${err}`);
             }
 
       - name: 'Create Pull Request'
-        uses: 'actions/github-script@v5'
+        uses: 'actions/github-script@v6'
         with:
           script: |-
             const sha = `${{ github.sha }}`;
@@ -128,6 +127,5 @@ jobs:
                 core.info(`Updated PR #${updateResponse.data.number} at ${updateResponse.data.html_url}`);
               }
             } catch(err) {
-              core.error(`Failed to create pull request: ${err}`);
-              process.exit(1);
+              core.setFailed(`Failed to create pull request: ${err}`);
             }

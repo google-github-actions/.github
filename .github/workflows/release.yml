@@ -17,7 +17,7 @@ jobs:
 
       - name: 'Get previous release tag'
         id: 'prev_release'
-        uses: 'actions/github-script@v5'
+        uses: 'actions/github-script@v6'
         with:
           result-encoding: 'string'
           script: |-
@@ -31,17 +31,16 @@ jobs:
               return latestRelease.data.tag_name;
             } catch(err) {
               if(err['status'] === 404) {
-                core.warning(`No releases found`);
+                core.info(`No releases found`);
                 return '';
               } else {
-                core.error(`Failed to load latest release: ${err}`);
-                process.exit(1);
+                core.setFailed(`Failed to load latest release: ${err}`);
               }
             }
 
       - name: 'Create release'
         id: 'release'
-        uses: 'actions/github-script@v5'
+        uses: 'actions/github-script@v6'
         with:
           script: |-
             const sha = `${{ github.sha }}`;
@@ -75,12 +74,11 @@ jobs:
 
               core.info(`Created release ${response.data.name} at ${response.data.html_url}`);
             } catch(err) {
-              core.error(`Failed to create release: ${err}`);
-              process.exit(1);
+              core.setFailed(`Failed to create release: ${err}`);
             }
 
       - name: 'Update floating tag'
-        uses: 'actions/github-script@v5'
+        uses: 'actions/github-script@v6'
         with:
           script: |-
             const sha = `${{ github.sha }}`;
