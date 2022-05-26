@@ -10,12 +10,12 @@ jobs:
     steps:
       - uses: 'actions/checkout@v3'
 
-      - name: 'Get Package Version'
+      - name: 'Get package version'
         id: 'version'
         run: |-
           echo "::set-output name=new_version::$(cat package.json | jq -r .version)"
 
-      - name: 'Get Previous Release Tag'
+      - name: 'Get previous release tag'
         id: 'prev_release'
         uses: 'actions/github-script@v5'
         with:
@@ -23,23 +23,23 @@ jobs:
           script: |-
             const sha = `${{ github.sha }}`;
 
-            try{
+            try {
               const latestRelease = await github.rest.repos.getLatestRelease({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
               });
               return latestRelease.data.tag_name;
-            }catch(err){
-              if(err['status'] === 404){
+            } catch(err) {
+              if(err['status'] === 404) {
                 core.warning(`No releases found`);
                 return '';
-              }else{
+              } else {
                 core.error(`Failed to load latest release: ${err}`);
                 process.exit(1);
               }
             }
 
-      - name: 'Create Release'
+      - name: 'Create release'
         id: 'release'
         uses: 'actions/github-script@v5'
         with:
@@ -48,7 +48,7 @@ jobs:
             const tag = `v${{ steps.version.outputs.new_version }}`;
             const previousTagName = `${{ steps.prev_release.outputs.result }}`;
 
-            try{
+            try {
               const createReleaseRequest = {
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -58,7 +58,7 @@ jobs:
                 generate_release_notes: true,
               };
 
-              if(previousTagName){
+              if(previousTagName) {
                 const releaseNotes = await github.rest.repos.generateReleaseNotes({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
@@ -74,12 +74,12 @@ jobs:
               const response = await github.rest.repos.createRelease(createReleaseRequest);
 
               core.info(`Created release ${response.data.name} at ${response.data.html_url}`);
-            }catch(err){
+            } catch(err) {
               core.error(`Failed to create release: ${err}`);
               process.exit(1);
             }
 
-      - name: 'Update Floating Tag'
+      - name: 'Update floating tag'
         uses: 'actions/github-script@v5'
         with:
           script: |-

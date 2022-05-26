@@ -1,15 +1,15 @@
-name: 'Draft Release'
+name: 'Draft release'
 
 on:
   workflow_call:
     inputs:
       version_strategy:
-        description: 'Version Strategy'
+        description: 'Version strategy'
         required: true
         type: 'string'
 
 env:
-  PR_BRANCH: 'actions/draft-release-${{ github.ref_name}}'
+  PR_BRANCH: 'actions/draft-release-${{ github.ref_name }}'
 
 jobs:
   draft-release:
@@ -22,26 +22,26 @@ jobs:
         with:
           node-version: '16.x'
 
-      - name: 'Build and Push'
+      - name: 'Build and push'
         id: 'build'
         run: |-
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git checkout -b $PR_BRANCH
+          git checkout -b "${PR_BRANCH}"
 
           npm version ${{ inputs.version_strategy }} --git-tag-version=false
 
           NEW_VERSION=$(cat package.json | jq -r .version)
-          echo "::set-output name=new_version::$NEW_VERSION"
+          echo "::set-output name=new_version::${NEW_VERSION}"
 
           npm ci && npm run build
 
           git add .
-          git commit -m "Release: v$NEW_VERSION"
+          git commit -m "Release: v${NEW_VERSION}"
           git push origin $PR_BRANCH --force
 
-      - name: 'Generate Release Notes'
+      - name: 'Generate release notes'
         id: 'release_notes'
         uses: 'actions/github-script@v5'
         with:
@@ -56,8 +56,8 @@ jobs:
                 repo: context.repo.repo,
               });
               previousTagName = latestRelease.data.tag_name;
-            }catch(err){
-              if(err['status'] !== 404){
+            } catch(err) {
+              if(err['status'] !== 404) {
                 core.error(`Failed to load latest release: ${err}`);
                 process.exit(1);
               }
@@ -65,7 +65,7 @@ jobs:
               core.info(`No existing releases found`);
             }
 
-            try{
+            try {
               const releaseNotesRequest = {
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -73,14 +73,14 @@ jobs:
                 target_commitish: sha,
               };
 
-              if(previousTagName){
+              if(previousTagName) {
                 releaseNotesRequest.previous_tag_name = previousTagName;
               }
 
               const releaseNotes = await github.rest.repos.generateReleaseNotes(releaseNotesRequest);
 
               return releaseNotes.data.body;
-            }catch(err){
+            } catch(err) {
               core.error(`Failed to generate release notes: ${err}`);
               process.exit(1);
             }
@@ -96,7 +96,7 @@ jobs:
             const prBranch = `${{ env.PR_BRANCH }}`;
             const prBody = `${{ steps.release_notes.outputs.result }}`;
 
-            try{
+            try {
               const listResponse = await github.rest.pulls.list({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -105,7 +105,7 @@ jobs:
                 base: baseBranch,
               });
 
-              if(!listResponse.data.length){
+              if(!listResponse.data.length) {
                 const createResponse = await github.rest.pulls.create({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
@@ -116,7 +116,7 @@ jobs:
                 });
 
                 core.info(`Created PR #${createResponse.data.number} at ${createResponse.data.html_url}`);
-              }else{
+              } else {
                 const updateResponse = await github.rest.pulls.update({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
@@ -127,7 +127,7 @@ jobs:
 
                 core.info(`Updated PR #${updateResponse.data.number} at ${updateResponse.data.html_url}`);
               }
-            }catch(err){
+            } catch(err) {
               core.error(`Failed to create pull request: ${err}`);
               process.exit(1);
             }
