@@ -1,0 +1,109 @@
+name: 'Release'
+
+on:
+  workflow_call:
+
+jobs:
+  release:
+    name: 'Release'
+    runs-on: 'ubuntu-latest'
+    steps:
+      - uses: 'actions/checkout@v3'
+
+      - name: 'Get package version'
+        id: 'version'
+        run: |-
+          echo "::set-output name=new_version::$(cat package.json | jq -r .version)"
+
+      - name: 'Get previous release tag'
+        id: 'prev_release'
+        uses: 'actions/github-script@v6'
+        with:
+          result-encoding: 'string'
+          script: |-
+            const sha = `${{ github.sha }}`;
+
+            try {
+              const latestRelease = await github.rest.repos.getLatestRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+              });
+              return latestRelease.data.tag_name;
+            } catch(err) {
+              if(err['status'] === 404) {
+                core.info(`No releases found`);
+                return '';
+              } else {
+                core.setFailed(`Failed to load latest release: ${err}`);
+              }
+            }
+
+      - name: 'Create release'
+        id: 'release'
+        uses: 'actions/github-script@v6'
+        with:
+          script: |-
+            const sha = `${{ github.sha }}`;
+            const tag = `v${{ steps.version.outputs.new_version }}`;
+            const previousTagName = `${{ steps.prev_release.outputs.result }}`;
+
+            try {
+              const createReleaseRequest = {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag_name: tag,
+                target_commitish: sha,
+                name: tag,
+                generate_release_notes: true,
+              };
+
+              if(previousTagName) {
+                const releaseNotes = await github.rest.repos.generateReleaseNotes({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  tag_name: tag,
+                  target_commitish: sha,
+                  previous_tag_name: previousTagName,
+                });
+                
+                createReleaseRequest.body = releaseNotes.data.body;
+                createReleaseRequest.generate_release_notes = false;
+              }
+
+              const response = await github.rest.repos.createRelease(createReleaseRequest);
+
+              core.info(`Created release ${response.data.name} at ${response.data.html_url}`);
+            } catch(err) {
+              core.setFailed(`Failed to create release: ${err}`);
+            }
+
+      - name: 'Update floating tag'
+        uses: 'actions/github-script@v6'
+        with:
+          script: |-
+            const sha = `${{ github.sha }}`;
+            const tag = `v${{ steps.version.outputs.new_version }}`;
+            const major = tag.split('.')[0];
+
+            // Try to update the ref first. If that fails, it probably does not
+            // exist yet, and we should create it.
+            try {
+              await github.rest.git.updateRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `tags/${major}`,
+                sha: sha,
+                force: true,
+              });
+              core.info(`Updated ${major} to ${sha}`);
+            } catch(err) {
+              core.warning(`Failed to create tag ${major}: ${err}`);
+
+              await github.rest.git.createRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `refs/tags/${major}`,
+                sha: sha,
+              });
+              core.info(`Created ${major} at ${sha}`);
+            }

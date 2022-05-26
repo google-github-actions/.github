@@ -1,0 +1,17 @@
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+    authors:
+      - github-actions[bot]
+  categories:
+    - title: Breaking Changes 🛠
+      labels:
+        - breaking-change
+    - title: Exciting New Features 🎉
+      labels:
+        - feature
+        - enhancement
+    - title: Other Changes
+      labels:
+        - '*'
