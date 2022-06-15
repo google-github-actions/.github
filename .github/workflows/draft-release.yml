@@ -26,9 +26,8 @@ jobs:
         id: 'build'
         run: |-
           # configure username and email for git to show who made the changes
-          # user who triggered workflow will be kept for auditing
-          git config user.name "${{ github.actor }}"
-          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          git config user.name "google-github-actions-bot"
+          git config user.email "github-actions-bot@google.com"
 
           git checkout -b "${PR_BRANCH}"
 
@@ -88,6 +87,7 @@ jobs:
       - name: 'Create Pull Request'
         uses: 'actions/github-script@v6'
         with:
+          github-token: '${{ secrets.ACTIONS_BOT_TOKEN }}'
           script: |-
             const sha = `${{ github.sha }}`;
             const tag = `v${{ steps.build.outputs.new_version }}`;
