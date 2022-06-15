@@ -26,8 +26,9 @@ jobs:
         id: 'build'
         run: |-
           # configure username and email for git to show who made the changes
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # user who triggered workflow will be kept for auditing
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
 
           git checkout -b "${PR_BRANCH}"
 
