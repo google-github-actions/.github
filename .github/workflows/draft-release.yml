@@ -7,6 +7,9 @@ on:
         description: 'Version strategy: The strategy to used to update the version based on semantic versioning (more info at https://semver.org/).'
         required: true
         type: 'string'
+    secrets:
+      ACTIONS_BOT_TOKEN:
+        required: true
 
 env:
   PR_BRANCH: 'actions/draft-release-${{ github.ref_name }}'
