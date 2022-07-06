@@ -104,7 +104,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 state: `open`,
-                head: prBranch,
+                head: `${context.repo.owner}:${prBranch}`,
                 base: baseBranch,
               });
 
