@@ -108,6 +108,8 @@ jobs:
                 base: baseBranch,
               });
 
+              core.isDebug() && console.log(listResponse);
+
               if(!listResponse.data.length) {
                 const createResponse = await github.rest.pulls.create({
                   owner: context.repo.owner,
@@ -131,5 +133,6 @@ jobs:
                 core.info(`Updated PR #${updateResponse.data.number} at ${updateResponse.data.html_url}`);
               }
             } catch(err) {
+              console.error(err);
               core.setFailed(`Failed to create pull request: ${err}`);
             }
