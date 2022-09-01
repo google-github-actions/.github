@@ -20,7 +20,6 @@ body:
   attributes:
     label: 'Detailed design'
     description: 'Do you have more information about a detailed design? Are there specific considerations to take? Include sample YAML.'
-    render: 'markdown'
 
 - id: 'additional'
   type: 'textarea'
