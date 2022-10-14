@@ -37,7 +37,7 @@ jobs:
           npm version ${{ inputs.version_strategy }} --git-tag-version=false
 
           NEW_VERSION=$(cat package.json | jq -r .version)
-          echo "::set-output name=new_version::${NEW_VERSION}"
+          echo "new_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
 
           npm ci && npm run build
 

@@ -13,7 +13,7 @@ jobs:
       - name: 'Get package version'
         id: 'version'
         run: |-
-          echo "::set-output name=new_version::$(cat package.json | jq -r .version)"
+          echo "new_version=$(cat package.json | jq -r .version)" >> $GITHUB_OUTPUT
 
       - name: 'Get previous release tag'
         id: 'prev_release'
