@@ -11,10 +11,6 @@ on:
       ACTIONS_BOT_TOKEN:
         required: true
 
-permissions:
-  contents: 'write'
-  pull-requests: 'write'
-
 env:
   PR_BRANCH: 'actions/draft-release-${{ github.ref_name }}'
 
