@@ -141,7 +141,7 @@ jobs:
 
                 const enableAutoMergeResponse = await github.graphql(query, {
                   pullRequestId: createResponse.data.node_id,
-                  mergeMethod: 'squash',
+                  mergeMethod: 'SQUASH',
                 })
 
                 core.info(`Enabled auto-merge for PR #${createResponse.data.number}`);
