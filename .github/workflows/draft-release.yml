@@ -18,9 +18,6 @@ jobs:
   draft-release:
     name: 'Draft Release'
     runs-on: 'ubuntu-latest'
-    permissions:
-      contents: 'write'
-
     steps:
       - uses: 'actions/checkout@v3'
 
@@ -144,8 +141,8 @@ jobs:
             }
 
       - name: 'Enable auto-merge'
-        env:
-          GH_TOKEN: '${{ secrets.ACTIONS_BOT_TOKEN }}'
+        permissions:
+          contents: 'write'
         run: |-
           gh pr merge \
             --squash \
