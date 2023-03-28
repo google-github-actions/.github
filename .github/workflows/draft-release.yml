@@ -18,9 +18,6 @@ jobs:
   draft-release:
     name: 'Draft Release'
     runs-on: 'ubuntu-latest'
-    permissions:
-      contents: 'write'
-
     steps:
       - uses: 'actions/checkout@v3'
 
@@ -90,8 +87,7 @@ jobs:
               core.setFailed(`Failed to generate release notes: ${err}`);
             }
 
-      - id: 'create-pull-request'
-        name: 'Create Pull Request'
+      - name: 'Create Pull Request'
         uses: 'actions/github-script@v6'
         with:
           github-token: '${{ secrets.ACTIONS_BOT_TOKEN }}'
@@ -124,7 +120,6 @@ jobs:
                   base: baseBranch,
                 });
 
-                core.setOutput("pull_request_url", createResponse.data.html_url)
                 core.info(`Created PR #${createResponse.data.number} at ${createResponse.data.html_url}`);
               } else {
                 const updateResponse = await github.rest.pulls.update({
@@ -135,23 +130,9 @@ jobs:
                   body: prBody,
                 });
 
-                core.setOutput("pull_request_url", updateResponse.data.html_url)
                 core.info(`Updated PR #${updateResponse.data.number} at ${updateResponse.data.html_url}`);
               }
             } catch(err) {
               console.error(err);
               core.setFailed(`Failed to create pull request: ${err}`);
             }
-
-      # This uses the default token instead of the bot token, (because the bot
-      # doesn't have permissions to enable auto-merge?).
-      - name: 'Enable auto-merge'
-        env:
-          GH_TOKEN: '${{ github.token }}'
-        run: |-
-          gh pr merge \
-            --squash \
-            --auto \
-            --repo \
-            --delete-branch \
-            "${{ steps.create-pull-request.outputs.pull_request_url }}"
