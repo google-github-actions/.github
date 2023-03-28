@@ -121,30 +121,6 @@ jobs:
                 });
 
                 core.info(`Created PR #${createResponse.data.number} at ${createResponse.data.html_url}`);
-
-                // Enable auto-merge - this is only available via the graphQL API.
-                const query = `
-                  mutation enableAutoMerge($pullRequestId: ID!, $mergeMethod: PullRequestMergeMethod) {
-                    enablePullRequestAutoMerge(input: {
-                      pullRequestId: $pullRequestId,
-                      mergeMethod: $mergeMethod,
-                    }) {
-                      pullRequest {
-                        id,
-                        autoMergeRequest {
-                          enabledAt
-                        }
-                      }
-                    }
-                  }
-                `
-
-                const enableAutoMergeResponse = await github.graphql(query, {
-                  pullRequestId: createResponse.data.node_id,
-                  mergeMethod: 'squash',
-                })
-
-                core.info(`Enabled auto-merge for PR #${createResponse.data.number}`);
               } else {
                 const updateResponse = await github.rest.pulls.update({
                   owner: context.repo.owner,
