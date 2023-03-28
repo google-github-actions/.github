@@ -87,8 +87,7 @@ jobs:
               core.setFailed(`Failed to generate release notes: ${err}`);
             }
 
-      - id: 'create-pull-request'
-        name: 'Create Pull Request'
+      - name: 'Create Pull Request'
         uses: 'actions/github-script@v6'
         with:
           github-token: '${{ secrets.ACTIONS_BOT_TOKEN }}'
@@ -121,8 +120,31 @@ jobs:
                   base: baseBranch,
                 });
 
-                core.setOutput("pull_request_url", createResponse.data.html_url)
                 core.info(`Created PR #${createResponse.data.number} at ${createResponse.data.html_url}`);
+
+                // Enable auto-merge - this is only available via the graphQL API.
+                const query = `
+                  mutation enableAutoMerge($pullRequestId: ID!, $mergeMethod: PullRequestMergeMethod) {
+                    enablePullRequestAutoMerge(input: {
+                      pullRequestId: $pullRequestId,
+                      mergeMethod: $mergeMethod,
+                    }) {
+                      pullRequest {
+                        id,
+                        autoMergeRequest {
+                          enabledAt
+                        }
+                      }
+                    }
+                  }
+                `
+
+                const enableAutoMergeResponse = await github.graphql(query, {
+                  pullRequestId: createResponse.data.node_id,
+                  mergeMethod: 'SQUASH',
+                })
+
+                core.info(`Enabled auto-merge for PR #${createResponse.data.number}`);
               } else {
                 const updateResponse = await github.rest.pulls.update({
                   owner: context.repo.owner,
@@ -132,21 +154,9 @@ jobs:
                   body: prBody,
                 });
 
-                core.setOutput("pull_request_url", updateResponse.data.html_url)
                 core.info(`Updated PR #${updateResponse.data.number} at ${updateResponse.data.html_url}`);
               }
             } catch(err) {
               console.error(err);
               core.setFailed(`Failed to create pull request: ${err}`);
             }
-
-      - name: 'Enable auto-merge'
-        env:
-          GH_TOKEN: '${{ secrets.ACTIONS_BOT_TOKEN }}'
-        run: |-
-          gh pr merge \
-            --squash \
-            --auto \
-            --repo \
-            --delete-branch \
-            "${{ steps.create-pull-request.outputs.pull_request_url }}"
