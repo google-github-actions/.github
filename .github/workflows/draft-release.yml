@@ -143,11 +143,7 @@ jobs:
               core.setFailed(`Failed to create pull request: ${err}`);
             }
 
-      # This uses the default token instead of the bot token, (because the bot
-      # doesn't have permissions to enable auto-merge?).
       - name: 'Enable auto-merge'
-        env:
-          GH_TOKEN: '${{ github.token }}'
         run: |-
           gh pr merge \
             --squash \
