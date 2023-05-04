@@ -4,6 +4,11 @@ We will review and may accept contributions to all repositories in
 [google-github-actions][org]. Below are some guidelines to maximize your
 contribution.
 
+**Please note:** This project is not an officially supported Google product. It
+is not covered by a Google Cloud support contract. To report bugs or request
+features in the Google Cloud product, please [contact Google Cloud
+support](https://cloud.google.com/support).
+
 
 ## Contributor License Agreement
 

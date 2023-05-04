@@ -5,7 +5,7 @@ body:
 - type: 'markdown'
   attributes:
     value: |-
-      Thank you for requesting a feature. Please complete the form below so we can triage and prioritize your feature.
+      Thank you for requesting a feature. Please complete the form below so we can triage and prioritize your feature. This project is not an officially supported Google product. It is not covered by a Google Cloud support contract. To request features in a Google Cloud product, please contact Google Cloud support at https://cloud.google.com/support.
 
 - id: 'tldr'
   type: 'textarea'
