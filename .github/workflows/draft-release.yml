@@ -26,42 +26,38 @@ jobs:
           node-version: '16.x'
 
       - name: 'Build and push'
-        id: 'build'
         run: |-
           # configure username and email for git to show who made the changes
           git config user.name "google-github-actions-bot"
           git config user.email "github-actions-bot@google.com"
 
-          git checkout -b "${PR_BRANCH}"
+          git checkout -b "${GITHUB_HEAD_REF}"
 
           npm version ${{ inputs.version_strategy }} --git-tag-version=false
 
           NEW_VERSION=$(cat package.json | jq -r .version)
-          echo "new_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
+          echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
 
           npm ci && npm run build
 
           git add .
           git commit -m "Release: v${NEW_VERSION}"
-          git push origin "${PR_BRANCH}" --force
+          git push origin "${GITHUB_HEAD_REF}" --force
 
       - name: 'Generate release notes'
-        id: 'release_notes'
         uses: 'actions/github-script@v6'
         with:
-          result-encoding: 'string'
           script: |-
-            const sha = `${{ github.sha }}`;
-            let previousTagName = ``;
+            let previousTagName = "";
 
-            try{
+            try {
               const latestRelease = await github.rest.repos.getLatestRelease({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
               });
               previousTagName = latestRelease.data.tag_name;
-            } catch(err) {
-              if(err['status'] !== 404) {
+            } catch (err) {
+              if (err["status"] !== 404) {
                 core.setFailed(`Failed to load latest release: ${err}`);
               }
 
@@ -72,18 +68,20 @@ jobs:
               const releaseNotesRequest = {
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                tag_name: sha,
-                target_commitish: sha,
+                tag_name: context.sha,
+                target_commitish: context.sha,
               };
 
-              if(previousTagName) {
+              if (previousTagName) {
                 releaseNotesRequest.previous_tag_name = previousTagName;
               }
 
-              const releaseNotes = await github.rest.repos.generateReleaseNotes(releaseNotesRequest);
+              const releaseNotes = await github.rest.repos.generateReleaseNotes(
+                releaseNotesRequest
+              );
 
-              return releaseNotes.data.body;
-            } catch(err) {
+              core.exportVariable("RELEASE_NOTES", releaseNotes.data.body)
+            } catch (err) {
               core.setFailed(`Failed to generate release notes: ${err}`);
             }
 
@@ -92,47 +90,46 @@ jobs:
         with:
           github-token: '${{ secrets.ACTIONS_BOT_TOKEN }}'
           script: |-
-            const sha = `${{ github.sha }}`;
-            const tag = `v${{ steps.build.outputs.new_version }}`;
-            const baseBranch = `${{ github.ref_name }}`;
-            const repoURL = `${{ github.server_url }}/${{ github.repository }}`;
-            const prBranch = `${{ env.PR_BRANCH }}`;
-            const prBody = `${{ steps.release_notes.outputs.result }}`;
+            const tag = `v${ process.env.NEW_VERSION }`;
 
             try {
               const listResponse = await github.rest.pulls.list({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                state: `open`,
-                head: `${context.repo.owner}:${prBranch}`,
-                base: baseBranch,
+                state: "open",
+                head: `${ context.repo.owner }:${ process.env.GITHUB_HEAD_REF }`,
+                base: process.env.PR_BRANCH,
               });
 
               core.isDebug() && console.log(listResponse);
 
-              if(!listResponse.data.length) {
+              if (!listResponse.data.length) {
                 const createResponse = await github.rest.pulls.create({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   title: `Release: ${tag}`,
-                  body: prBody,
-                  head: prBranch,
-                  base: baseBranch,
+                  body: process.env.RELEASE_NOTES,
+                  head: process.env.GITHUB_HEAD_REF,
+                  base: process.env.PR_BRANCH,
                 });
 
-                core.info(`Created PR #${createResponse.data.number} at ${createResponse.data.html_url}`);
+                core.info(
+                  `Created PR #${createResponse.data.number} at ${createResponse.data.html_url}`
+                );
               } else {
                 const updateResponse = await github.rest.pulls.update({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   pull_number: listResponse.data[0].number,
                   title: `Release: ${tag}`,
-                  body: prBody,
+                  body: process.env.RELEASE_NOTES,
                 });
 
-                core.info(`Updated PR #${updateResponse.data.number} at ${updateResponse.data.html_url}`);
+                core.info(
+                  `Updated PR #${updateResponse.data.number} at ${updateResponse.data.html_url}`
+                );
               }
-            } catch(err) {
+            } catch (err) {
               console.error(err);
               core.setFailed(`Failed to create pull request: ${err}`);
             }
