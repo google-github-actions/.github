@@ -14,30 +14,11 @@ jobs:
         run: |-
           echo "NEW_VERSION=$(cat package.json | jq -r .version)" >> $GITHUB_ENV
 
-      - name: 'Get previous release tag'
-        uses: 'actions/github-script@v6'
-        with:
-          script: |-
-            try {
-              const latestRelease = await github.rest.repos.getLatestRelease({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-              });
-              core.exportVariable("PREV_TAG", latestRelease.data.tag_name);
-            } catch (err) {
-              if (err["status"] === 404) {
-                core.info(`No releases found`);
-              } else {
-                core.setFailed(`Failed to load latest release: ${err}`);
-              }
-            }
-
       - name: 'Create release'
         uses: 'actions/github-script@v6'
         with:
           script: |-
-            const tag = `v${ process.env.NEW_VERSION }`;
-            const previousTagName = `${ process.env.PREV_TAG }`;
+            const tag = "v" + process.env.NEW_VERSION;
 
             try {
               const createReleaseRequest = {
@@ -62,7 +43,7 @@ jobs:
         uses: 'actions/github-script@v6'
         with:
           script: |-
-            const tag = `v${ process.env.NEW_VERSION }`;
+            const tag = "v" + process.env.NEW_VERSION;
             const major = tag.split(".")[0];
 
             // Try to update the ref first. If that fails, it probably does not
@@ -71,7 +52,7 @@ jobs:
               await github.rest.git.updateRef({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                ref: `tags/${major}`,
+                ref: "tags/" + major,
                 sha: context.sha,
                 force: true,
               });
@@ -82,7 +63,7 @@ jobs:
               await github.rest.git.createRef({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                ref: `refs/tags/${major}`,
+                ref: "refs/tags/" + major,
                 sha: context.sha,
               });
               core.info(`Created ${major} at ${context.sha}`);

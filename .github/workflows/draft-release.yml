@@ -93,15 +93,15 @@ jobs:
         with:
           github-token: '${{ secrets.ACTIONS_BOT_TOKEN }}'
           script: |-
-            const tag = `v${ process.env.NEW_VERSION }`;
+            const tag = "v" + process.env.NEW_VERSION;
 
             try {
               const listResponse = await github.rest.pulls.list({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 state: "open",
-                head: `${ context.repo.owner }:${ process.env.GITHUB_HEAD_REF }`,
-                base: process.env.PR_BRANCH,
+                head: context.repo.owner + ":" + process.env.PR_BRANCH,
+                base: process.env.GITHUB_REF_NAME,
               });
 
               core.isDebug() && console.log(listResponse);
@@ -110,10 +110,10 @@ jobs:
                 const createResponse = await github.rest.pulls.create({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  title: `Release: ${tag}`,
+                  title: "Release: " + tag,
                   body: process.env.RELEASE_NOTES,
-                  head: process.env.GITHUB_HEAD_REF,
-                  base: process.env.PR_BRANCH,
+                  head: process.env.PR_BRANCH,
+                  base: process.env.GITHUB_REF_NAME,
                 });
 
                 core.info(
@@ -124,7 +124,7 @@ jobs:
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   pull_number: listResponse.data[0].number,
-                  title: `Release: ${tag}`,
+                  title: "Release: " + tag,
                   body: process.env.RELEASE_NOTES,
                 });
 
