@@ -41,7 +41,9 @@ jobs:
           NEW_VERSION=$(cat package.json | jq -r .version)
           echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
 
-          npm ci && npm run build
+          npm ci
+          [[ "$(npm run --json | jq -r 'has("docs")')" == "true" ]] && npm run docs
+          npm run build
 
           git add .
           git commit -m "Release: v${NEW_VERSION}"
