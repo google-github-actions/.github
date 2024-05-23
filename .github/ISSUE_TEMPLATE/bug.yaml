@@ -2,49 +2,49 @@ name: 'Bug report'
 description: 'File a bug report'
 labels: ['bug']
 body:
-- type: 'markdown'
-  attributes:
-    value: |-
-      Thank you for filing a bug. Please complete the form below so we can triage, reproduce, and fix your issue. This project is not an officially supported Google product. It is not covered by a Google Cloud support contract. To report bugs in a Google Cloud product, please contact Google Cloud support at https://cloud.google.com/support.
+  - type: 'markdown'
+    attributes:
+      value: |-
+        Thank you for filing a bug. Please complete the form below so we can triage, reproduce, and fix your issue. This project is not an officially supported Google product. It is not covered by a Google Cloud support contract. To report bugs in a Google Cloud product, please contact Google Cloud support at https://cloud.google.com/support.
 
-- id: 'tldr'
-  type: 'textarea'
-  attributes:
-    label: 'TL;DR'
-    description: 'Describe the bug in 1-2 sentences.'
-  validations:
-    required: true
+  - id: 'tldr'
+    type: 'textarea'
+    attributes:
+      label: 'TL;DR'
+      description: 'Describe the bug in 1-2 sentences.'
+    validations:
+      required: true
 
-- id: 'expected_behavior'
-  type: 'textarea'
-  attributes:
-    label: 'Expected behavior'
-    description: 'What did you expect to happen?'
+  - id: 'expected_behavior'
+    type: 'textarea'
+    attributes:
+      label: 'Expected behavior'
+      description: 'What did you expect to happen?'
 
-- id: 'observed_behavior'
-  type: 'textarea'
-  attributes:
-    label: 'Observed behavior'
-    description: 'What happened instead?'
+  - id: 'observed_behavior'
+    type: 'textarea'
+    attributes:
+      label: 'Observed behavior'
+      description: 'What happened instead?'
 
-- id: 'action_yaml'
-  type: 'textarea'
-  attributes:
-    label: 'Action YAML'
-    description: 'Paste your entire GitHub Actions YAML here, removing any sensitive values. Include the entire workflow file, not just the section you believe to be relevant.'
-    render: 'yaml'
-  validations:
-    required: true
+  - id: 'action_yaml'
+    type: 'textarea'
+    attributes:
+      label: 'Action YAML'
+      description: 'Paste your entire GitHub Actions YAML here, removing any sensitive values. Include the entire workflow file, not just the section you believe to be relevant.'
+      render: 'yaml'
+    validations:
+      required: true
 
-- id: 'log_output'
-  type: 'textarea'
-  attributes:
-    label: 'Log output'
-    description: 'Paste all log output here from the GitHub Actions run here, removing any sensitive values. Include the entire log output, not just the section you believe to be relevant. If your workflow is public, you can also provide a link to a failed run. For more information on downloading logs, please see https://docs.github.com/en/actions/monitoring-and-troubleshooting-workflows/using-workflow-run-logs#downloading-logs.'
-    render: 'text'
+  - id: 'log_output'
+    type: 'textarea'
+    attributes:
+      label: 'Log output'
+      description: 'Paste all log output here from the GitHub Actions run here, removing any sensitive values. Include the entire log output, not just the section you believe to be relevant. If your workflow is public, you can also provide a link to a failed run. For more information on downloading logs, please see https://docs.github.com/en/actions/monitoring-and-troubleshooting-workflows/using-workflow-run-logs#downloading-logs.'
+      render: 'text'
 
-- id: 'additional'
-  type: 'textarea'
-  attributes:
-    label: 'Additional information'
-    description: 'Is there anything else you think we should know?'
+  - id: 'additional'
+    type: 'textarea'
+    attributes:
+      label: 'Additional information'
+      description: 'Is there anything else you think we should know?'
