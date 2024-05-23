@@ -2,27 +2,27 @@ name: 'Feature request'
 description: 'File a feature request'
 labels: ['enhancement']
 body:
-- type: 'markdown'
-  attributes:
-    value: |-
-      Thank you for requesting a feature. Please complete the form below so we can triage and prioritize your feature. This project is not an officially supported Google product. It is not covered by a Google Cloud support contract. To request features in a Google Cloud product, please contact Google Cloud support at https://cloud.google.com/support.
+  - type: 'markdown'
+    attributes:
+      value: |-
+        Thank you for requesting a feature. Please complete the form below so we can triage and prioritize your feature. This project is not an officially supported Google product. It is not covered by a Google Cloud support contract. To request features in a Google Cloud product, please contact Google Cloud support at https://cloud.google.com/support.
 
-- id: 'tldr'
-  type: 'textarea'
-  attributes:
-    label: 'TL;DR'
-    description: 'Describe the feature in 1-2 sentences.'
-  validations:
-    required: true
+  - id: 'tldr'
+    type: 'textarea'
+    attributes:
+      label: 'TL;DR'
+      description: 'Describe the feature in 1-2 sentences.'
+    validations:
+      required: true
 
-- id: 'detailed_design'
-  type: 'textarea'
-  attributes:
-    label: 'Detailed design'
-    description: 'Do you have more information about a detailed design? Are there specific considerations to take? Include sample YAML.'
+  - id: 'detailed_design'
+    type: 'textarea'
+    attributes:
+      label: 'Detailed design'
+      description: 'Do you have more information about a detailed design? Are there specific considerations to take? Include sample YAML.'
 
-- id: 'additional'
-  type: 'textarea'
-  attributes:
-    label: 'Additional information'
-    description: 'Is there anything else you think we should know?'
+  - id: 'additional'
+    type: 'textarea'
+    attributes:
+      label: 'Additional information'
+      description: 'Is there anything else you think we should know?'
