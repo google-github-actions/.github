@@ -64,7 +64,7 @@ jobs:
           github-token: '${{ secrets.ACTIONS_BOT_TOKEN }}'
           script: |-
             const tag = "v" + process.env.NEW_VERSION;
-            const releaseNotes = process.env.RELEASE_NOTES.
+            const releaseNotes = process.env.RELEASE_NOTES;
 
             try {
               const createReleaseRequest = {
