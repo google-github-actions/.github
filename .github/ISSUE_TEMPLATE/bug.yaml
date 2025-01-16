@@ -40,7 +40,7 @@ body:
     type: 'textarea'
     attributes:
       label: 'Log output'
-      description: 'Paste all log output here from the GitHub Actions run here, removing any sensitive values. Include the entire log output, not just the section you believe to be relevant. If your workflow is public, you can also provide a link to a failed run. For more information on downloading logs, please see https://docs.github.com/en/actions/monitoring-and-troubleshooting-workflows/using-workflow-run-logs#downloading-logs.'
+      description: 'Paste all debug log output here from the GitHub Actions run here, removing any sensitive values. Include the entire debug log output, not just the section you believe to be relevant. If your workflow is public, you can also provide a link to a failed run. For more information on enabling debug logging, please see: https://docs.github.com/en/actions/monitoring-and-troubleshooting-workflows/troubleshooting-workflows/enabling-debug-logging. For more information on downloading logs, please see https://docs.github.com/en/actions/monitoring-and-troubleshooting-workflows/using-workflow-run-logs#downloading-logs.'
       render: 'text'
 
   - id: 'additional'
