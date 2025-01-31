@@ -32,7 +32,7 @@ jobs:
         run: |-
           CURRENT_VERSION="$(jq -r .version ./package.json)"
           echo "::debug::computed current version: ${CURRENT_VERSION}"
-          echo "current_version=${CURRENT_VERSION}" >> $GITHUB_ENV
+          echo "current_version=${CURRENT_VERSION}" >> $GITHUB_OUTPUT
 
           npm version "${VERSION_STRATEGY}" \
             --no-git-tag-version \
@@ -40,7 +40,7 @@ jobs:
             --no-workspaces-update
           NEXT_VERSION="$(jq -r .version ./package.json)"
           echo "::debug::computed next version: ${NEXT_VERSION}"
-          echo "next_version=${NEXT_VERSION}" >> $GITHUB_ENV
+          echo "next_version=${NEXT_VERSION}" >> $GITHUB_OUTPUT
 
           npm ci
           [[ "$(npm run --json | jq -r 'has("docs")')" == "true" ]] && npm run docs
