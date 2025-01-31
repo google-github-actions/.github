@@ -11,15 +11,10 @@ on:
       ACTIONS_BOT_TOKEN:
         required: true
 
-env:
-  PR_BRANCH: 'actions/draft-release-${{ github.ref_name }}'
-
 jobs:
   draft-release:
     name: 'Draft Release'
     runs-on: 'ubuntu-latest'
-    permissions:
-      contents: 'write'
     steps:
       - uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
 
@@ -27,116 +22,63 @@ jobs:
         with:
           node-version: '22.x'
 
-      - name: 'Build and push'
+      - name: 'Build'
+        id: 'build'
         shell: 'bash'
         env:
           VERSION_STRATEGY: '${{ inputs.version_strategy }}'
         run: |-
-          # configure username and email for git to show who made the changes
-          git config user.name "google-github-actions-bot"
-          git config user.email "github-actions-bot@google.com"
+          CURRENT_VERSION="$(jq -r .version ./package.json)"
+          echo "::debug::computed current version: ${CURRENT_VERSION}"
+          echo "current_version=${CURRENT_VERSION}" >> $GITHUB_ENV
 
-          git checkout -b $PR_BRANCH
-
-          npm version $VERSION_STRATEGY --git-tag-version=false
-
-          NEW_VERSION=$(cat package.json | jq -r .version)
-          echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
+          npm version "${VERSION_STRATEGY}" \
+            --no-git-tag-version \
+            --no-commit-hooks \
+            --no-workspaces-update
+          NEXT_VERSION="$(jq -r .version ./package.json)"
+          echo "::debug::computed next version: ${NEXT_VERSION}"
+          echo "next_version=${NEXT_VERSION}" >> $GITHUB_ENV
 
           npm ci
           [[ "$(npm run --json | jq -r 'has("docs")')" == "true" ]] && npm run docs
           npm run build
 
-          git add .
-          git commit -m "Release: v${NEW_VERSION}"
-          git push origin $PR_BRANCH --force
-
       - name: 'Generate release notes'
+        id: 'generate-release-notes'
         uses: 'actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea' # ratchet:actions/github-script@v7
-        with:
-          script: |-
-            let previousTagName = "";
-
-            try {
-              const latestRelease = await github.rest.repos.getLatestRelease({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-              });
-              previousTagName = latestRelease.data.tag_name;
-            } catch (err) {
-              if (err["status"] !== 404) {
-                core.setFailed(`Failed to load latest release: ${err}`);
-              }
-
-              core.info(`No existing releases found`);
-            }
-
-            try {
-              const releaseNotesRequest = {
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                tag_name: context.sha,
-                target_commitish: context.sha,
-              };
-
-              if (previousTagName) {
-                releaseNotesRequest.previous_tag_name = previousTagName;
-              }
-
-              const releaseNotes = await github.rest.repos.generateReleaseNotes(
-                releaseNotesRequest
-              );
-
-              core.exportVariable("RELEASE_NOTES", releaseNotes.data.body)
-            } catch (err) {
-              core.setFailed(`Failed to generate release notes: ${err}`);
-            }
-
-      - name: 'Create Pull Request'
-        uses: 'actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea' # ratchet:actions/github-script@v7
+        env:
+          CURRENT_VERSION: '${{ steps.build.outputs.current_version }}'
+          NEXT_VERSION: '${{ steps.build.outputs.next_version }}'
         with:
           github-token: '${{ secrets.ACTIONS_BOT_TOKEN }}'
           script: |-
-            const tag = "v" + process.env.NEW_VERSION;
-
+            let releaseNotes = '';
             try {
-              const listResponse = await github.rest.pulls.list({
+              const releaseNotesResponse = await github.rest.repos.generateReleaseNotes({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                state: "open",
-                head: context.repo.owner + ":" + process.env.PR_BRANCH,
-                base: process.env.GITHUB_REF_NAME,
+                tag_name: `v${process.env.NEXT_VERSION}`,
+                previous_tag_name: `v${process.env.CURRENT_VERSION}`,
               });
-
-              core.isDebug() && console.log(listResponse);
-
-              if (!listResponse.data.length) {
-                const createResponse = await github.rest.pulls.create({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  title: "Release: " + tag,
-                  body: process.env.RELEASE_NOTES,
-                  head: process.env.PR_BRANCH,
-                  base: process.env.GITHUB_REF_NAME,
-                });
-
-                core.info(
-                  `Created PR #${createResponse.data.number} at ${createResponse.data.html_url}`
-                );
-              } else {
-                const updateResponse = await github.rest.pulls.update({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  pull_number: listResponse.data[0].number,
-                  title: "Release: " + tag,
-                  body: process.env.RELEASE_NOTES,
-                });
-
-                core.info(
-                  `Updated PR #${updateResponse.data.number} at ${updateResponse.data.html_url}`
-                );
-              }
-            } catch (err) {
-              console.error(err);
-              core.setFailed(`Failed to create pull request: ${err}`);
+              releaseNotes = releaseNotesResponse.data.body;
+            } catch(err) {
+              core.warning('No existing releases found, assuming initial release');
+              releaseNotes = 'Initial release'
             }
+            core.setOutput('release_notes', releaseNotes)
+
+      # TODO(sethvargo): remove
+      - name: 'debug'
+        run: |-
+          echo "::notice::${{ toJSON(github) }}"
+
+      - name: 'Create/Update Pull Request'
+        uses: 'abcxyz/pkg/.github/actions/create-pull-request@main' # ratchet:exclude
+        with:
+          token: '${{ secrets.ACTIONS_BOT_TOKEN }}'
+          base_branch: '${{ github.event.repository.default_branch }}' # TODO: pull from trigger branch instead (for release builds)
+          head_branch: 'actions/draft-release-${{ github.ref_name }}'
+          title: 'Release: v${{ steps.build.outputs.next_version }}'
+          body: '${{ steps.generate-release-notes.outputs.release_notes }}'
+          compute_paths: true
