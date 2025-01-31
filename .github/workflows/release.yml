@@ -7,101 +7,51 @@ on:
         required: true
 
 jobs:
-  release:
-    name: 'Release'
+  create-release:
+    if: |-
+      ${{ startsWith(github.event.head_commit.message, 'Release: v') }}
     runs-on: 'ubuntu-latest'
+    outputs:
+      created: '${{ steps.create-release.outputs.created || false }}'
+      tag: '${{ steps.create-release.outputs.tag }}'
+      version: '${{ steps.create-release.outputs.version }}'
     steps:
-      - name: 'Checkout'
-        uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
-
-      - name: 'Get package version'
-        run: |-
-          echo "NEW_VERSION=$(cat package.json | jq -r .version)" >> $GITHUB_ENV
-
-      - name: 'Get previous release tag'
-        uses: 'actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea' # ratchet:actions/github-script@v7
-        with:
-          github-token: '${{ secrets.ACTIONS_BOT_TOKEN }}'
-          script: |-
-            try {
-              const latestRelease = await github.rest.repos.getLatestRelease({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-              });
-              core.exportVariable("PREV_TAG", latestRelease.data.tag_name);
-            } catch (err) {
-              if (err["status"] === 404) {
-                core.info(`No releases found`);
-              } else {
-                core.setFailed(`Failed to load latest release: ${err}`);
-              }
-            }
-
       - name: 'Create release'
-        uses: 'actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea' # ratchet:actions/github-script@v7
+        id: 'create-release'
+        uses: 'abcxyz/pkg/.github/actions/create-release@main' # ratchet:exclude
         with:
-          github-token: '${{ secrets.ACTIONS_BOT_TOKEN }}'
-          script: |-
-            const tag = "v" + process.env.NEW_VERSION;
+          github_token: '${{ secrets.ACTIONS_BOT_TOKEN }}'
+          expected_email: '72759630+google-github-actions-bot@users.noreply.github.com'
 
-            try {
-              const createReleaseRequest = {
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                tag_name: tag,
-                target_commitish: context.sha,
-                name: tag,
-                generate_release_notes: true,
-              };
+  publish-release:
+    runs-on: 'ubuntu-latest'
+    needs:
+      - 'create-release'
+    steps:
+      - name: 'Publish release'
+        env:
+          GH_TOKEN: '${{ secrets.ACTIONS_BOT_TOKEN }}'
+          RELEASE_VERSION: 'v${{ needs.create-release.outputs.version }}'
+          REPO: '${{ github.repository }}'
+        run: |-
+          gh release edit "${RELEASE_VERSION}" \
+            --repo "${REPO}" \
+            --draft=false
 
-              if (process.env.PREV_TAG) {
-                const releaseNotes = await github.rest.repos.generateReleaseNotes({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  tag_name: tag,
-                  target_commitish: context.sha,
-                  previous_tag_name: process.env.PREV_TAG,
-                });
-
-                createReleaseRequest.body = releaseNotes.data.body;
-                createReleaseRequest.generate_release_notes = false;
-              }
-
-              const response = await github.rest.repos.createRelease(createReleaseRequest);
-
-              core.info(
-                `Created release ${response.data.name} at ${response.data.html_url}`
-              );
-            } catch (err) {
-              core.setFailed(`Failed to create release: ${err}`);
-            }
-
-      - name: 'Update floating tag'
-        uses: 'actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea' # ratchet:actions/github-script@v7
-        with:
-          script: |-
-            const tag = "v" + process.env.NEW_VERSION;
-            const major = tag.split(".")[0];
-
-            // Try to update the ref first. If that fails, it probably does not
-            // exist yet, and we should create it.
-            try {
-              await github.rest.git.updateRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                ref: "tags/" + major,
-                sha: context.sha,
-                force: true,
-              });
-              core.info(`Updated ${major} to ${context.sha}`);
-            } catch (err) {
-              core.warning(`Failed to create tag ${major}: ${err}`);
-
-              await github.rest.git.createRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                ref: "refs/tags/" + major,
-                sha: context.sha,
-              });
-              core.info(`Created ${major} at ${context.sha}`);
-            }
+  cleanup-failed-release:
+    if: |-
+      ${{ always() && needs.create-release.outputs.created == 'true' && contains(fromJSON('["failure", "cancelled", "skipped"]'), needs.publish-release.result) }}
+    runs-on: 'ubuntu-latest'
+    needs:
+      - 'create-release'
+      - 'publish-release'
+    steps:
+      - name: 'Cleanup failed release'
+        env:
+          GH_TOKEN: '${{ secrets.ACTIONS_BOT_TOKEN }}'
+          RELEASE_VERSION: 'v${{ needs.create-release.outputs.version }}'
+          REPO: '${{ github.repository }}'
+        run: |-
+          gh release delete "${RELEASE_VERSION}" \
+            --repo "${REPO}" \
+            --yes
