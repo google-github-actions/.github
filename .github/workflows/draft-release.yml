@@ -77,7 +77,7 @@ jobs:
           echo "::notice::${{ toJSON(github) }}"
 
       - name: 'Create/Update Pull Request'
-        uses: 'abcxyz/pkg/.github/actions/create-pull-request@main' # ratchet:exclude
+        uses: 'abcxyz/pkg/.github/actions/create-pull-request@sethvargo/morebash' # ratchet:exclude
         with:
           token: '${{ secrets.ACTIONS_BOT_TOKEN }}'
           base_branch: '${{ github.ref_name }}'
