@@ -1,0 +1,170 @@
+name: 'Lint'
+
+# NOTE: This workflow is NOT intended to be a reusable workflow via
+# workflow_call. Instead it will be "reused" by configuring via organization
+# rulesets as a required workflow.
+on:
+  # Note that for org required workflows:
+  # "Any filters you specify for the supported events are ignored
+  # - for example, branches, branches-ignore, paths, types and so on."
+  # https://docs.github.com/en/enterprise-cloud@latest/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#supported-event-triggers
+  pull_request:
+  merge_group:
+
+concurrency:
+  group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
+  cancel-in-progress: true
+
+permissions:
+  contents: 'read'
+  statuses: 'write'
+
+jobs:
+  init:
+    name: 'Lint (Initialize)'
+    runs-on: 'ubuntu-latest'
+    if: |
+      ${{ github.repository != 'google-github-actions/.github' }}
+    outputs:
+      lint-targets: '${{ steps.lint-targets.outputs.lint-targets }}'
+      gomod-dirs: '${{ steps.lint-targets.outputs.gomod-dirs }}'
+      packagejson-dirs: '${{ steps.lint-targets.outputs.packagejson-dirs }}'
+    steps:
+      - name: 'Checkout'
+        uses: 'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683' # ratchet:actions/checkout@v4
+        with:
+          fetch-depth: 1
+          ref: '${{ github.event.pull_request.head.sha }}'
+
+      - name: 'Identify lint targets'
+        id: 'lint-targets'
+        env:
+          REF: '${{ github.event.pull_request.head.sha }}'
+          LC_ALL: 'C'
+        shell: 'bash'
+        run: |-
+          set -euo pipefail
+
+          # match_files determines if the current git repository has any files
+          # matching the given pattern. This has been performance tested
+          # against a shallow checkout of chromium (future changes should be
+          # tested in the same manner).
+          match_files() {
+            local filepattern="${1}"
+            matches="$(git ls-tree -r --name-only "${REF}" | grep -m 1 -E "${filepattern}")"
+            code="$?"
+            if [[ -n "${matches}" ]]; then
+              # Ignore exit codes because we found a match.
+              # Exit code 141 and higher may occur because we exit early.
+              return 0
+            fi
+            return "${code}"
+          }
+
+          declare -a TARGETS=()
+          if match_files '.*(\.dockerfile|Dockerfile)$'; then
+            TARGETS+=("docker")
+          fi
+          if match_files '.github/(actions|workflows)/.*\.(yaml|yml)$'; then
+            TARGETS+=("github" "ratchet")
+          fi
+          if match_files 'go.mod$'; then
+            TARGETS+=("go")
+          fi
+          if match_files '.*\.(java)$'; then
+            TARGETS+=("java")
+          fi
+          if match_files 'package.json$'; then
+            TARGETS+=("javascript")
+          fi
+          if match_files '.*\.(sh)$'; then
+            TARGETS+=("shell")
+          fi
+          if match_files '.*\.(tf)$'; then
+            TARGETS+=("terraform")
+          fi
+          if match_files '.*\.(yaml|yml)$'; then
+            TARGETS+=("yaml")
+          fi
+
+          LINT_TARGETS="$(jq --compact-output --null-input '$ARGS.positional' --args -- "${TARGETS[@]}")"
+          echo "::debug::Found lint targets: ${LINT_TARGETS}"
+          echo "lint-targets=${LINT_TARGETS}" >> "${GITHUB_OUTPUT}"
+
+  lint:
+    runs-on: 'ubuntu-latest'
+    name: 'Lint (${{ matrix.lint-target }})'
+    needs:
+      - 'init'
+    if: |-
+      ${{ needs.init.outputs.lint-targets != '[]' && github.repository != 'google-github-actions/.github' }}
+    strategy:
+      fail-fast: false
+      max-parallel: 100
+      matrix:
+        lint-target: '${{ fromJSON(needs.init.outputs.lint-targets) }}'
+    steps:
+      - name: 'Checkout'
+        uses: 'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683' # ratchet:actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: 'Lint (Docker)'
+        if: |-
+          ${{ matrix.lint-target == 'docker' }}
+        uses: 'abcxyz/actions/.github/actions/lint-docker@main' # ratchet:exclude
+        with:
+          hadolint_config_url: 'https://raw.githubusercontent.com/abcxyz/actions/main/.hadolint.yml'
+          hadolint_version: '2.12.0'
+
+      - name: 'Lint (GitHub Actions)'
+        if: |-
+          ${{ matrix.lint-target == 'github' }}
+        uses: 'abcxyz/actions/.github/actions/lint-github-actions@main' # ratchet:exclude
+        with:
+          actionlint_version: '1.7.7'
+
+      - name: 'Lint (Go)'
+        if: |-
+          ${{ matrix.lint-target == 'go' }}
+        uses: 'abcxyz/actions/.github/actions/lint-go@main' # ratchet:exclude
+        with:
+          golangci_url: 'https://raw.githubusercontent.com/abcxyz/actions/main/default.golangci.yml'
+
+      - name: 'Lint (Go modules)'
+        if: |-
+          ${{ matrix.lint-target == 'go' }}
+        uses: 'abcxyz/actions/.github/actions/lint-go-modules@main' # ratchet:exclude
+
+      - name: 'Lint (Java)'
+        if: |-
+          ${{ matrix.lint-target == 'java' }}
+        uses: 'abcxyz/actions/.github/actions/lint-java@main' # ratchet:exclude
+        with:
+          google_java_format_version: '1.27.0'
+          github_token: '${{ secrets.GITHUB_TOKEN }}'
+
+      - name: 'Lint (JavaScript)'
+        if: |-
+          ${{ matrix.lint-target == 'javascript' }}
+        uses: 'abcxyz/actions/.github/actions/lint-javascript@main' # ratchet:exclude
+
+      - name: 'Lint (Ratchet)'
+        if: |-
+          ${{ matrix.lint-target == 'ratchet' }}
+        uses: 'sethvargo/ratchet@main' # ratchet:exclude
+        with:
+          files: './.github/actions/**/*.yml ./.github/workflows/*.yml'
+
+      - name: 'Lint (Shell)'
+        if: |-
+          ${{ matrix.lint-target == 'shell' }}
+        uses: 'abcxyz/actions/.github/actions/lint-shell@main' # ratchet:exclude
+
+      - name: 'Lint (YAML)'
+        if: |-
+          ${{ matrix.lint-target == 'yaml' }}
+        uses: 'abcxyz/actions/.github/actions/lint-yaml@main' # ratchet:exclude
+        with:
+          yamllint_url: 'https://raw.githubusercontent.com/google-github-actions/.github/refs/heads/main/.yamllint.yml'
+          yamllint_version: '1.37.1'
