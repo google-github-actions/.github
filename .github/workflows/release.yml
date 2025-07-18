@@ -6,6 +6,15 @@ on:
       ACTIONS_BOT_TOKEN:
         required: true
 
+permissions:
+  attestations: 'write'
+  contents: 'write'
+  packages: 'write'
+
+defaults:
+  run:
+    shell: 'bash'
+
 jobs:
   create-release:
     if: |-

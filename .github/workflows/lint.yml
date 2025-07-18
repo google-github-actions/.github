@@ -19,6 +19,10 @@ permissions:
   contents: 'read'
   statuses: 'write'
 
+defaults:
+  run:
+    shell: 'bash'
+
 jobs:
   init:
     name: 'Lint (Initialize)'
@@ -41,7 +45,6 @@ jobs:
         env:
           REF: '${{ github.event.pull_request.head.sha }}'
           LC_ALL: 'C'
-        shell: 'bash'
         run: |-
           set -euo pipefail
 
