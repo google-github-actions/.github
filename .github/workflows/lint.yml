@@ -31,8 +31,7 @@ jobs:
       ${{ github.repository != 'google-github-actions/.github' }}
     outputs:
       lint-targets: '${{ steps.lint-targets.outputs.lint-targets }}'
-      gomod-dirs: '${{ steps.lint-targets.outputs.gomod-dirs }}'
-      packagejson-dirs: '${{ steps.lint-targets.outputs.packagejson-dirs }}'
+      ratchet-files: '${{ steps.lint-targets.outputs.ratchet-files }}'
     steps:
       - name: 'Checkout'
         uses: 'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683' # ratchet:actions/checkout@v4
@@ -48,14 +47,15 @@ jobs:
         run: |-
           set -euo pipefail
 
-          # match_files determines if the current git repository has any files
-          # matching the given pattern. This has been performance tested
-          # against a shallow checkout of chromium (future changes should be
-          # tested in the same manner).
+          find_files() {
+            local filepattern="${1}"
+            git ls-tree -r --name-only "${REF}" | grep -E "${filepattern}" | sort || true
+          }
+
           match_files() {
             local filepattern="${1}"
             matches="$(git ls-tree -r --name-only "${REF}" | grep -m 1 -E "${filepattern}")"
-            code="$?"
+            code="${?}"
             if [[ -n "${matches}" ]]; then
               # Ignore exit codes because we found a match.
               # Exit code 141 and higher may occur because we exit early.
@@ -68,8 +68,11 @@ jobs:
           if match_files '.*(\.dockerfile|Dockerfile)$'; then
             TARGETS+=("docker")
           fi
-          if match_files '.github/(actions|workflows)/.*\.(yaml|yml)$'; then
+          if match_files '(action\.(yaml|yml))|(\.github/(actions|workflows)/.*\.(yaml|yml))$'; then
             TARGETS+=("github" "ratchet")
+            RATCHET_FILES="$(find_files '(action\.(yaml|yml))|(\.github/(actions|workflows)/.*\.(yaml|yml))$' | tr '\n' ' ')"
+            echo "::debug::Found ratchetable files: ${RATCHET_FILES}"
+            echo "ratchet-files=${RATCHET_FILES}" >> "${GITHUB_OUTPUT}"
           fi
           if match_files 'go.mod$'; then
             TARGETS+=("go")
@@ -157,7 +160,7 @@ jobs:
           ${{ matrix.lint-target == 'ratchet' }}
         uses: 'sethvargo/ratchet@main' # ratchet:exclude
         with:
-          files: './.github/actions/**/*.yml ./.github/workflows/*.yml'
+          files: '${{ needs.init.outputs.ratchet-files }}'
 
       - name: 'Lint (Shell)'
         if: |-
