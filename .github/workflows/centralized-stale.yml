@@ -1,0 +1,101 @@
+name: 'Centralized Organization Stale Bot'
+permissions: {}
+on:
+  schedule:
+    # Run daily at 01:00 UTC
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+
+jobs:
+  # Stage 1: Query the organization for all active repositories
+  fetch-repositories:
+    runs-on: 'ubuntu-latest'
+    outputs:
+      matrix: '${{ steps.set-matrix.outputs.repos }}'
+    steps:
+      - id: 'auth-minty'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f' # ratchet:google-github-actions/auth@v2
+        with:
+          create_credentials_file: false
+          export_environment_variables: false
+          workload_identity_provider: '${{ vars.TOKEN_MINTER_WIF_PROVIDER }}'
+          service_account: '${{ vars.TOKEN_MINTER_WIF_SERVICE_ACCOUNT }}'
+          token_format: 'id_token'
+          id_token_audience: '${{ vars.TOKEN_MINTER_SERVICE_AUDIENCE }}'
+          id_token_include_email: true
+
+      - id: 'mint-github-token'
+        uses: 'abcxyz/github-token-minter/.github/actions/minty@45c29ca3418ff3bb3ad5815d88a80536efeba21b' # ratchet:abcxyz/github-token-minter/.github/actions/minty@main
+        with:
+          id_token: '${{ steps.auth-minty.outputs.id_token }}'
+          service_url: '${{ vars.TOKEN_MINTER_SERVICE_URL }}'
+          requested_permissions: |-
+            {
+              "scope": "stale-bot",
+              "repositories": ["*"],
+              "org_name": "google-github-actions"
+            }
+
+      - name: 'List active repositories'
+        id: set-matrix
+        env:
+          GH_TOKEN: '${{ steps.mint-github-token.outputs.token }}'
+        run: |
+          # Query GitHub API for active, public, non-forked repositories and force single-line JSON to prevent GITHUB_OUTPUT truncation
+          REPOS=$(gh api --paginate /orgs/google-github-actions/repos | jq -s 'add | [.[] | select(.archived == false and .private == false and .fork == false) | .name]' -c)
+          echo "repos=${REPOS}" >> "$GITHUB_OUTPUT"
+
+  # Stage 2: Fan out official actions/stale across all discovered repositories
+  apply-stale-rules:
+    needs: fetch-repositories
+    runs-on: 'ubuntu-latest'
+    strategy:
+      fail-fast: false
+      matrix:
+        repo: '${{ fromJson(needs.fetch-repositories.outputs.matrix) }}'
+
+    steps:
+      - id: 'auth-minty'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f' # ratchet:google-github-actions/auth@v2
+        with:
+          create_credentials_file: false
+          export_environment_variables: false
+          workload_identity_provider: '${{ vars.TOKEN_MINTER_WIF_PROVIDER }}'
+          service_account: '${{ vars.TOKEN_MINTER_WIF_SERVICE_ACCOUNT }}'
+          token_format: 'id_token'
+          id_token_audience: '${{ vars.TOKEN_MINTER_SERVICE_AUDIENCE }}'
+          id_token_include_email: true
+
+      - id: 'mint-github-token'
+        uses: 'abcxyz/github-token-minter/.github/actions/minty@45c29ca3418ff3bb3ad5815d88a80536efeba21b' # ratchet:abcxyz/github-token-minter/.github/actions/minty@main
+        with:
+          id_token: '${{ steps.auth-minty.outputs.id_token }}'
+          service_url: '${{ vars.TOKEN_MINTER_SERVICE_URL }}'
+          requested_permissions: |-
+            {
+              "scope": "stale-bot",
+              "repositories": ["${{ matrix.repo }}"],
+              "org_name": "google-github-actions"
+            }
+
+      - name: 'Run official stale bot'
+        uses: 'actions/stale@b5d41d4e1d5dceea10e7104786b73624c18a190f' # ratchet:actions/stale@v10.2.0
+        env:
+          GITHUB_REPOSITORY: 'google-github-actions/${{ matrix.repo }}'
+        with:
+          repo-token: '${{ steps.mint-github-token.outputs.token }}'
+          operations-per-run: 300 # Increased burndown limit for first execution
+
+          # Issue configuration (60 days total: 53 inactive + 7 warning)
+          days-before-issue-stale: 53
+          days-before-issue-close: 7
+          stale-issue-message: 'This issue has been automatically marked as stale because it has not had recent activity. It will be closed in 7 days if no further activity occurs.'
+          stale-issue-label: 'stale'
+
+          # PR configuration (30 days total: 23 inactive + 7 warning)
+          days-before-pr-stale: 23
+          days-before-pr-close: 7
+          stale-pr-message: 'This pull request has been automatically marked as stale because it has not had recent activity. Please leave a comment to remove this status.'
+          stale-pr-label: 'stale'
